@@ -1,0 +1,131 @@
+MessagingApi:
+  Type: AWS::ApiGatewayV2::Api
+  Properties:
+    ApiKeySelectionExpression: $request.header.x-api-key
+    Description: A websocket API to allow users to send and receive messages
+    Name: MessagingApi
+    ProtocolType: WEBSOCKET
+    RouteSelectionExpression: $request.body.action
+
+MessagingApiIntegration:
+  Type: AWS::ApiGatewayV2::Integration
+  Properties:
+    ApiId: !Ref MessagingApi
+    ConnectionType: INTERNET
+    Description: Lambda integration
+    IntegrationMethod: GET
+    IntegrationType: AWS
+    IntegrationUri:
+
+MessagingApiOnConnectionRoute:
+  Type: AWS::ApiGatewayV2::Route
+  DependsOn:
+    - MessagingApiIntegration
+  Properties:
+    ApiId: !Ref MessagingApi
+    AuthorizationType: NONE
+    RouteKey: IDontKnowWhatThisMeans
+    Target: !Join
+      - /
+      - - integrations
+        - !Ref MessagingApiIntegration
+
+MessagingLambda:
+  Type: AWS::Lambda::Function
+  Properties:
+    Code:
+      S3Bucket: code-for-lambda-functions
+      S3Key: MessagingLambdaCode
+    Description: A lambda function to save messages to a table
+    FunctionName: MessagingLambda
+    Handler: MessagingLambda::MessagingLambda.Function::FunctionHandlerAsync
+    Role: !GetAtt MessagingLambdaFunctionRole.Arn
+    Runtime: dotnetcore3.1
+    Timeout: 60
+
+MessagingLambdaPermissions:
+  Type: AWS::Lambda::MessagingLambdaPermissions
+  Properties:
+    Action: 'lambda:InvokeFunction'
+    FunctionName: MessagingLambda
+    Principal: 'apigateway.amazonaws.com'
+    SourceAccount: !Ref 'AWS::AccountId'
+
+MessagingTable:
+  Type: AWS::DynamoDB::Table
+  Properties:
+    AttributeDefinitions:
+      -
+        AttributeName: "MessageId"
+        AttributeType: "S"
+    BillingMode: PROVISIONED
+    KeySchema:
+      -
+        AttributeName: "MessageId"
+        KeyType: "HASH"
+    ProvisionedThroughput:
+      ReadCapacityUnits: 2
+      WriteCapacityUnits: 2
+    TableName: "MessagingTable"
+
+MessagingApiRole:
+  Type: AWS::IAM::Role
+  Properties:
+    AssumeRolePolicyDocument:
+      Version: '2012-10-17'
+      Statement:
+        - Effect: 'Allow'
+          Principal:
+            Service:
+              - 'apigateway.amazonaws.com'
+          Action:
+            - 'sts:AssumeRole'
+    Path: '/'
+    Policies:
+      - PolicyName: LambdaAccess
+        PolicyDocument:
+          Version: '2012-0-17'
+          Statement:
+            - Effect: 'Allow'
+              Action: 'lambda:*'
+              Resource:
+                - !GetAtt MessagingLambda.Arn
+    
+MessagingLambdaFunctionRole:
+  Type: AWS::IAM::Role
+  Properties:
+    AssumeRolePolicyDocument:
+      Version: '2012-10-17'
+      Statement:
+        - Effect: 'Allow'
+          Action:
+            - 'logs:CreateLogGroup'
+            - 'logs:CreateLogStream'
+            - 'logs:PutLogEvents'
+          Resource: '*'
+    Description: IAM role for messaging function
+    Path: '/'
+    Policies:
+      - PolicyName: ReadWriteTable
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: 'Allow'
+              Action:
+                - 'dynamodb:BatchGetItem'
+                - 'dynamodb:DescribeTable'
+                - 'dynamodb:GetItem'
+                - 'dynamodb:Query'
+                - 'dynamodb:Scan'
+                - 'dynamodb:BatchWriteItem'
+                - 'dynamodb:PutItem'
+                - 'dynamodb:UpdateItem'
+              Resource:
+                - 'arn:aws:dynamodb:*:*:table/MessagingTable'
+      - PolicyName: ApiGatewayPermissions
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: 'Allow'
+              Action: 'lambda:InvokeFunction'
+              Resource: '*'
