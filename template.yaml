@@ -1,6 +1,27 @@
 AWSTemplateFormatVersion: 2010-09-09
 Resources:
 
+  ApiGatewayAccount:
+      Type: AWS::ApiGateway::Account
+      Properties:
+        CloudWatchRoleArn: !GetAtt ApiGatewayLoggingRole.Arn
+
+  ApiGatewayLoggingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service:
+                - 'apigateway.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
+      Path: '/'
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+
   MessagingApi:
     Type: AWS::ApiGatewayV2::Api
     Properties:
@@ -15,9 +36,10 @@ Resources:
     Properties:
       ApiId: !Ref MessagingApi
       ConnectionType: INTERNET
+      CredentialsArn: !GetAtt MessagingApiRole.Arn
       Description: On connect integrate with the connection lambda
       IntegrationMethod: POST
-      IntegrationType: AWS
+      IntegrationType: AWS_PROXY
       IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MessagingOnConnectLambda.Arn}/invocations'
 
   MessagingApiIntegration:
@@ -25,9 +47,10 @@ Resources:
     Properties:
       ApiId: !Ref MessagingApi
       ConnectionType: INTERNET
+      CredentialsArn: !GetAtt MessagingApiRole.Arn
       Description: Lambda integration
       IntegrationMethod: POST
-      IntegrationType: AWS
+      IntegrationType: AWS_PROXY
       IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MessagingLambda.Arn}/invocations'
 
   MessagingApiOnDisconnectIntegration:
@@ -35,9 +58,10 @@ Resources:
     Properties:
       ApiId: !Ref MessagingApi
       ConnectionType: INTERNET
+      CredentialsArn: !GetAtt MessagingApiRole.Arn
       Description: On disconnect integrate with the disconnect lambda
       IntegrationMethod: POST
-      IntegrationType: AWS
+      IntegrationType: AWS_PROXY
       IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MessagingOnDisconnectLambda.Arn}/invocations'
   
   MessagingApiOnConnectionRoute:
