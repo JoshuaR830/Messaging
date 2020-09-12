@@ -300,8 +300,18 @@ Resources:
                   - 'dynamodb:UpdateItem'
                 Resource:
                   - 'arn:aws:dynamodb:*:*:table/MessagingTable'
-                  - 'arn:aws:dynamodb:*:*:table/MessagingConnectionsTable'
                   - 'arn:aws:dynamodb:*:*:table/MessagingUserTable'
+                  - 'arn:aws:dynamodb:*:*:table/MessagingConnectionsTable'
+                  - 'arn:aws:dynamodb:*:*:table/MessagingConnectionsTable/index/ConnectionId'
+        - PolicyName: DeleteConnection
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 'dynamodb:DeleteItem'
+                Resource:
+                  - 'arn:aws:dynamodb:*:*:table/MessagingConnectionsTable'
         - PolicyName: ApiGatewayPermissions
           PolicyDocument:
             Version: 2012-10-17
