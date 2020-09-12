@@ -190,12 +190,27 @@ Resources:
         -
           AttributeName: "UserId"
           AttributeType: "S"
+        -
+          AttributeName: "ConnectionId"
+          AttributeType: "S"
       BillingMode: PROVISIONED
+      GlobalSecondaryIndexes:
+        -
+          IndexName: ConnectionId
+          KeySchema:
+            -
+              AttributeName: "ConnectionId"
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: KEYS_ONLY
+          ProvisionedThroughput:
+            ReadCapacityUnits: 2
+            WriteCapacityUnits: 2
       KeySchema:
         -
           AttributeName: "UserId"
           KeyType: "HASH"
-      ProvisionedThroughput: 
+      ProvisionedThroughput:
         ReadCapacityUnits: 2
         WriteCapacityUnits: 2
       TableName: "MessagingConnectionsTable"

@@ -37,7 +37,7 @@ namespace OnConnectionLambda
         public async Task<APIGatewayProxyResponse> FunctionHandler(APIGatewayProxyRequest request, ILambdaContext context)
         {
 
-            using (var serviceProvider = _serviceCollection.BuildServiceProvider())
+            await using (var serviceProvider = _serviceCollection.BuildServiceProvider())
             {
                 return await serviceProvider.GetService<Handler>().Handle(request);
             }
