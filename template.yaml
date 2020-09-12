@@ -183,6 +183,23 @@ Resources:
         WriteCapacityUnits: 2
       TableName: "MessagingTable"
 
+  MessagingConnectionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: "UserId"
+          AttributeType: "S"
+      BillingMode: PROVISIONED
+      KeySchema:
+        -
+          AttributeName: "UserId"
+          KeyType: "HASH"
+      ProvisionedThroughput: 
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
+      TableName: "MessagingConnectionsTable"
+
   MessagingApiRole:
     Type: AWS::IAM::Role
     Properties:
@@ -251,6 +268,7 @@ Resources:
                   - 'dynamodb:UpdateItem'
                 Resource:
                   - 'arn:aws:dynamodb:*:*:table/MessagingTable'
+                  - 'arn:aws:dynamodb:*:*:table/MessagingConnectionsTable'
         - PolicyName: ApiGatewayPermissions
           PolicyDocument:
             Version: 2012-10-17
