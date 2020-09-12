@@ -1,10 +1,11 @@
-using System;
+using System.Net.Http;
 using System.Threading.Tasks;
+using Amazon.ApiGatewayManagementApi;
 using Amazon.Lambda.Core;
 using Amazon.Lambda.APIGatewayEvents;
-using Newtonsoft.Json;
-using System.Net.Http;
-using System.Text;
+using Amazon.Extensions.NETCore.Setup;
+using Microsoft.Extensions.DependencyInjection;
+
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
@@ -13,7 +14,20 @@ namespace MessagingLambda
 {
     public class Function
     {
+        private ServiceCollection _serviceCollection;
         private static readonly HttpClient client = new HttpClient();
+
+        public Function()
+        {
+            CreateServiceCollection();
+        }
+
+        public void CreateServiceCollection()
+        {
+            _serviceCollection = new ServiceCollection();
+            _serviceCollection.AddDefaultAWSOptions(new AWSOptions());
+            _serviceCollection.AddTransient<Handler>();
+        }
 
         /// <summary>
         /// A simple function that takes a string and does a ToUpper
@@ -23,29 +37,10 @@ namespace MessagingLambda
         /// <returns></returns>
         public async Task<APIGatewayProxyResponse> FunctionHandler(APIGatewayProxyRequest request, ILambdaContext context)
         {
-
-            Console.WriteLine(JsonConvert.SerializeObject(request));
-
-            byte[] bytes = Encoding.UTF8.GetBytes("Hello world");
-            var response = await client.PostAsync($"https://oc9gdrsfcl.execute-api.eu-west-2.amazonaws.com/messaging-test/@connections/{request.RequestContext.ConnectionId}", new ByteArrayContent(bytes));
-
-            Console.WriteLine(response.StatusCode);
-            Console.WriteLine(JsonConvert.SerializeObject(response));
-            
-            if (request.Body != null)
+            await using (var serviceProvider = _serviceCollection.BuildServiceProvider())
             {
-                
-                var body = JsonConvert.DeserializeObject<MessageBody>(request.Body);
-                var message = new MessageData(body.Message, request.RequestContext.ConnectionId);
-             
-                Console.WriteLine(message.Message);
+                return await serviceProvider.GetService<Handler>().Handle(request);
             }
-            
-            return new APIGatewayProxyResponse
-            {
-                StatusCode = 200,
-                Body = "Connected"
-            };
         }
     }
 }

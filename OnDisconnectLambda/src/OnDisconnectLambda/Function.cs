@@ -30,7 +30,7 @@ namespace OnDisconnectLambda
         /// <summary>
         /// A simple function that takes a string and does a ToUpper
         /// </summary>
-        /// <param name="input"></param>
+        /// <param name="request"></param>
         /// <param name="context"></param>
         /// <returns></returns>
         public async Task<APIGatewayProxyResponse> FunctionHandler(APIGatewayProxyRequest request, ILambdaContext context)
