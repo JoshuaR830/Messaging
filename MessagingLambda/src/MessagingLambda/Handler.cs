@@ -28,16 +28,9 @@ namespace MessagingLambda
         {
             Console.WriteLine(JsonConvert.SerializeObject(request));
 
-            var client = new AmazonApiGatewayManagementApiClient(new AmazonApiGatewayManagementApiConfig
-            {
-                ServiceURL = "https://oc9gdrsfcl.execute-api.eu-west-2.amazonaws.com/messaging-test",
-            });
-
             var bytes = Encoding.UTF8.GetBytes("Hello world");
             var stream = new MemoryStream(bytes);
             
-            Console.WriteLine(JsonConvert.SerializeObject(client));
-
             var connectionIds = new List<string>();
 
             ScanResponse dynamoResponse = null;
@@ -65,16 +58,30 @@ namespace MessagingLambda
 
             Console.WriteLine(JsonConvert.SerializeObject(connectionIds));
 
+            var client = new AmazonApiGatewayManagementApiClient(new AmazonApiGatewayManagementApiConfig
+            {
+                ServiceURL = "https://oc9gdrsfcl.execute-api.eu-west-2.amazonaws.com/messaging-test",
+            });
+
             foreach (var connectionId in connectionIds)
             {
                 Console.WriteLine(connectionId);
-                var response = await client.PostToConnectionAsync(new PostToConnectionRequest
+
+                try
                 {
-                    ConnectionId = connectionId,
-                    Data = stream,
-                }, CancellationToken.None);
-                
-                Console.WriteLine(JsonConvert.SerializeObject(response));
+                    stream.Position = 0;
+                    var response = await client.PostToConnectionAsync(new PostToConnectionRequest
+                    {
+                        ConnectionId = connectionId,
+                        Data = stream,
+                    }, CancellationToken.None);
+
+                    Console.WriteLine(JsonConvert.SerializeObject(response));
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(JsonConvert.SerializeObject(e));
+                }
             }
 
             if (request.Body != null)
