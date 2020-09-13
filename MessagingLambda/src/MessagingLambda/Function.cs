@@ -1,6 +1,5 @@
-using System.Net.Http;
 using System.Threading.Tasks;
-using Amazon.ApiGatewayManagementApi;
+using Amazon.DynamoDBv2;
 using Amazon.Lambda.Core;
 using Amazon.Lambda.APIGatewayEvents;
 using Amazon.Extensions.NETCore.Setup;
@@ -15,7 +14,6 @@ namespace MessagingLambda
     public class Function
     {
         private ServiceCollection _serviceCollection;
-        private static readonly HttpClient client = new HttpClient();
 
         public Function()
         {
@@ -26,6 +24,7 @@ namespace MessagingLambda
         {
             _serviceCollection = new ServiceCollection();
             _serviceCollection.AddDefaultAWSOptions(new AWSOptions());
+            _serviceCollection.AddAWSService<IAmazonDynamoDB>();
             _serviceCollection.AddTransient<Handler>();
         }
 
