@@ -28,8 +28,13 @@ namespace MessagingLambda
         {
             Console.WriteLine(JsonConvert.SerializeObject(request));
 
-            var bytes = Encoding.UTF8.GetBytes("Hello world");
-            var stream = new MemoryStream(bytes);
+            var body = JsonConvert.DeserializeObject<MessageBody>(request.Body);
+            
+            var messageBytes = Encoding.UTF8.GetBytes(body.Message);
+            var messageStream = new MemoryStream(messageBytes);
+            
+            // var bytes = Encoding.UTF8.GetBytes($"Hello from {request.RequestContext.ConnectionId}");
+            // var stream = new MemoryStream(bytes);
             
             var connectionIds = new List<string>();
 
@@ -69,11 +74,11 @@ namespace MessagingLambda
 
                 try
                 {
-                    stream.Position = 0;
+                    messageStream.Position = 0;
                     var response = await client.PostToConnectionAsync(new PostToConnectionRequest
                     {
                         ConnectionId = connectionId,
-                        Data = stream,
+                        Data = messageStream,
                     }, CancellationToken.None);
 
                     Console.WriteLine(JsonConvert.SerializeObject(response));
@@ -82,14 +87,6 @@ namespace MessagingLambda
                 {
                     Console.WriteLine(JsonConvert.SerializeObject(e));
                 }
-            }
-
-            if (request.Body != null)
-            {
-                var body = JsonConvert.DeserializeObject<MessageBody>(request.Body);
-                var message = new MessageData(body.Message, request.RequestContext.ConnectionId);
-             
-                Console.WriteLine(message.Message);
             }
             
             return new APIGatewayProxyResponse
