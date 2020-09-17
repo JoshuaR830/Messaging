@@ -41,17 +41,6 @@ Resources:
       IntegrationMethod: POST
       IntegrationType: AWS_PROXY
       IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MessagingOnConnectLambda.Arn}/invocations'
-  
-  MessagingApiFriendsIntegration:
-    Type: AWS::ApiGatewayV2::Integration
-    Properties:
-      ApiId: !Ref MessagingApi
-      ConnectionType: INTERNET
-      CredentialsArn: !GetAtt MessagingApiRole.Arn
-      Description: On connect integrate with the friends lambda
-      IntegrationMethod: POST
-      IntegrationType: AWS_PROXY
-      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MessagingFriendsLambda.Arn}/invocations'
 
   MessagingApiIntegration:
     Type: AWS::ApiGatewayV2::Integration
@@ -87,19 +76,6 @@ Resources:
         - /
         - - integrations
           - !Ref MessagingApiOnConnectIntegration
-
-  MessagingFriendsApiRoute:
-    Type: AWS::ApiGatewayV2::Route
-    DependsOn:
-      - MessagingApiFriendsIntegration
-    Properties:
-      ApiId: !Ref MessagingApi
-      AuthorizationType: NONE
-      RouteKey: friends
-      Target: !Join
-        - /
-        - - integrations
-          - !Ref MessagingApiFriendsIntegration
   
   MessagingApiRoute:
     Type: AWS::ApiGatewayV2::Route
@@ -126,6 +102,60 @@ Resources:
         - /
         - - integrations
           - !Ref MessagingApiOnDisconnectIntegration
+
+  MessagingRestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Description: A REST API for requests that don't require websocket integrations
+      EndpointConfiguration:
+        Types:
+          - EDGE
+      Name: MessagingRestApi
+
+  MessagingFriendsRestApiPermissions:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: MessagingFriendsLambda
+      Principal: 'apigateway.amazonaws.com'
+      SourceAccount: !Ref 'AWS::AccountId'
+
+  MessagingFriendsRestApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt MessagingRestApi.RootResourceId
+      PathPart: 'friends'
+      RestApiId: !Ref MessagingRestApi
+
+  MessagingFriendsRestApiMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      ApiKeyRequired: false
+      AuthorizationType: NONE
+      HttpMethod: GET
+      Integration:
+        ConnectionType: INTERNET
+        Credentials: !GetAtt MessagingApiRole.Arn
+        IntegrationHttpMethod: POST
+        PassthroughBehavior: WHEN_NO_MATCH
+        Type: AWS_PROXY
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MessagingFriendsLambda.Arn}/invocations'
+      ResourceId: !Ref MessagingFriendsRestApiResource
+      RestApiId: !Ref MessagingRestApi
+
+  MessagingRestApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: MessagingFriendsRestApiMethod
+    Properties:
+      Description: Messsaging REST API deployment
+      RestApiId: !Ref MessagingRestApi
+
+  MessagingRestApiStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      DeploymentId: !Ref MessagingRestApiDeployment
+      RestApiId: !Ref MessagingRestApi
+      StageName: messaging-rest
 
   MessagingOnConnectLambda:
     Type: AWS::Lambda::Function
