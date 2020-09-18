@@ -119,12 +119,27 @@ Resources:
       FunctionName: MessagingFriendsLambda
       Principal: 'apigateway.amazonaws.com'
       SourceAccount: !Ref 'AWS::AccountId'
+ 
+  MessagingFriendsInfoRestApiPermissions:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: MessagingFriendsInfoLambda
+      Principal: 'apigateway.amazonaws.com'
+      SourceAccount: !Ref 'AWS::AccountId'
 
   MessagingFriendsRestApiResource:
     Type: AWS::ApiGateway::Resource
     Properties:
       ParentId: !GetAtt MessagingRestApi.RootResourceId
       PathPart: 'friends'
+      RestApiId: !Ref MessagingRestApi
+
+  MessagingFriendsInfoRestApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt MessagingRestApi.RootResourceId
+      PathPart: 'friends-info'
       RestApiId: !Ref MessagingRestApi
 
   MessagingFriendsRestApiMethod:
@@ -141,6 +156,22 @@ Resources:
         Type: AWS_PROXY
         Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MessagingFriendsLambda.Arn}/invocations'
       ResourceId: !Ref MessagingFriendsRestApiResource
+      RestApiId: !Ref MessagingRestApi
+
+  MessagingFriendsInfoRestApiMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      ApiKeyRequired: false
+      AuthorizationType: NONE
+      HttpMethod: GET
+      Integration:
+        ConnectionType: INTERNET
+        Credentials: !GetAtt MessagingApiRole.Arn
+        IntegrationHttpMethod: POST
+        PassthroughBehavior: WHEN_NO_MATCH
+        Type: AWS_PROXY
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MessagingFriendsInfoLambda.Arn}/invocations'
+      ResourceId: !Ref MessagingFriendsInfoRestApiResource
       RestApiId: !Ref MessagingRestApi
 
   MessagingRestApiDeployment:
@@ -179,6 +210,19 @@ Resources:
       Description: A lambda function to get a list of friends
       FunctionName: MessagingFriendsLambda
       Handler: FriendsLambda::FriendsLambda.Function::FunctionHandler
+      Role: !GetAtt MessagingLambdaFunctionRole.Arn
+      Runtime: dotnetcore3.1
+      Timeout: 60
+
+  MessagingFriendsInfoLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: code-for-lambda-functions
+        S3Key: MessagingFriendsInfoLambdaCode
+      Description: A lambda function to get a list of friends
+      FunctionName: MessagingFriendsInfoLambda
+      Handler: FriendsInfoLambda::FriendsInfoLambda.Function::FunctionHandler
       Role: !GetAtt MessagingLambdaFunctionRole.Arn
       Runtime: dotnetcore3.1
       Timeout: 60
@@ -222,6 +266,14 @@ Resources:
     Properties:
       Action: 'lambda:InvokeFunction'
       FunctionName: MessagingFriendsLambda
+      Principal: 'apigateway.amazonaws.com'
+      SourceAccount: !Ref 'AWS::AccountId'
+
+  MessagingFriendsInfoLambdaPermissions:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: MessagingFriendsInfoLambda
       Principal: 'apigateway.amazonaws.com'
       SourceAccount: !Ref 'AWS::AccountId'
   
@@ -349,6 +401,7 @@ Resources:
                 Resource:
                   - !GetAtt MessagingLambda.Arn
                   - !GetAtt MessagingFriendsLambda.Arn
+                  - !GetAtt MessagingFriendsInfoLambda.Arn
                   - !GetAtt MessagingOnConnectLambda.Arn
                   - !GetAtt MessagingOnDisconnectLambda.Arn
       

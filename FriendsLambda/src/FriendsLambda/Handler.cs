@@ -57,6 +57,28 @@ namespace FriendsLambda
 
             var friends = friendItemResponse.Item["Connections"].SS;
             Console.WriteLine(JsonConvert.SerializeObject(friends));
+
+            var friendsInfo = new List<FriendInfo>();
+            
+            foreach (var friend in friends)
+            {
+                var friendGetItemRequest = new GetItemRequest
+                {
+                    TableName = "MessagingUserTable",
+                    Key = new Dictionary<string, AttributeValue>
+                    {
+                        ["UserId"] = new AttributeValue { S = friend }
+                    }
+                    
+                };
+                
+                var something = await _dynamoDb.GetItemAsync(friendGetItemRequest);
+
+                if (!something.IsItemSet)
+                    continue;
+
+                friendsInfo.Add(new FriendInfo(something.Item["UserId"].S, something.Item["FirstName"].S, something.Item["LastName"].S));
+            }
             
             //
             // var client = new AmazonApiGatewayManagementApiClient(new AmazonApiGatewayManagementApiConfig
@@ -79,7 +101,13 @@ namespace FriendsLambda
             return new APIGatewayProxyResponse
             {
                 StatusCode = 200,
-                Body = JsonConvert.SerializeObject(friends),
+                Headers = new Dictionary<string, string>
+                {
+                    ["Access-Control-Allow-Origin"] = "*",
+                    ["Access-Control-Allow-Headers"] = "Content-Type",
+                    ["Access-Control-Allow-Methods"] = "Options,Post, GET"
+                },
+                Body = JsonConvert.SerializeObject(friendsInfo),
             };
         }
     }
