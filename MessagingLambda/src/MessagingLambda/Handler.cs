@@ -29,6 +29,8 @@ namespace MessagingLambda
             Console.WriteLine(JsonConvert.SerializeObject(request));
 
             var body = JsonConvert.DeserializeObject<MessageBody>(request.Body);
+
+            var messageRecipients = body.Users ?? new List<string>();
             
             var messageBytes = Encoding.UTF8.GetBytes(body.Message);
             var messageStream = new MemoryStream(messageBytes);
@@ -38,28 +40,41 @@ namespace MessagingLambda
             
             var connectionIds = new List<string>();
 
-            ScanResponse dynamoResponse = null;
+            var keys = new List<Dictionary<string, AttributeValue>>();
 
-            do
+            Console.WriteLine(JsonConvert.SerializeObject(body.Users));
+            Console.WriteLine(JsonConvert.SerializeObject(messageRecipients));
+            
+            foreach (var recipientId in messageRecipients)
             {
-                var scanRequest = new ScanRequest
+                keys.Add(new Dictionary<string, AttributeValue>
                 {
-                    TableName = TableName,
-                    ExclusiveStartKey = dynamoResponse?.LastEvaluatedKey,
-                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                    ["UserId"] = new AttributeValue {S = recipientId}
+                });
+            }
+
+            if (keys.Count > 0)
+            {
+                var batchGetConnections = new BatchGetItemRequest
+                {
+                    RequestItems = new Dictionary<string, KeysAndAttributes>
                     {
-                        [":cId"] = new AttributeValue {S = request.RequestContext.ConnectionId}
-                    },
-                    FilterExpression = "ConnectionId <> :cId",
-                    ConsistentRead = true
+                        {
+                            "MessagingConnectionsTable",
+                            new KeysAndAttributes
+                            {
+                                Keys = keys,
+                            }
+                        }
+                    }
                 };
 
-                dynamoResponse = await _dynamoDb.ScanAsync(scanRequest);
+                var connectionIdsResponse = await _dynamoDb.BatchGetItemAsync(batchGetConnections);
 
-                var tempConnectionIds = dynamoResponse.Items.Select(x => x["ConnectionId"].S).ToList();
-
-                connectionIds.AddRange(tempConnectionIds);
-            } while (dynamoResponse.LastEvaluatedKey.Values.Count > 0);
+                connectionIds
+                    .AddRange(connectionIdsResponse.Responses["MessagingConnectionsTable"]
+                    .Select(connectionIdResponse => connectionIdResponse["ConnectionId"].S));
+            }
 
             Console.WriteLine(JsonConvert.SerializeObject(connectionIds));
 
